@@ -55,8 +55,9 @@ const polylineMachine = setup({
         },
         // Abandonner le tracé de la polyline
         abandon: () => {
-            // Supprimer la variable polyline :
-            
+            polyline.remove();
+            polyline = undefined;
+            layer.batchDraw();
         },
         // Supprimer le dernier point de la polyline
         removeLastPoint: () => {
@@ -71,9 +72,7 @@ const polylineMachine = setup({
     guards: {
         // On peut encore ajouter un point
         pasPlein: () => {
-            // Retourner vrai si la polyline a moins de 10 points
-            // attention : dans le tableau de points, chaque point est représenté par 2 valeurs (coordonnées x et y)
-            
+            return polyline.points().length < MAX_POINTS * 2;
         },
         // On peut enlever un point
         plusDeDeuxPoints: () => {
@@ -82,11 +81,74 @@ const polylineMachine = setup({
         },
     },
 }).createMachine({
+    /** @xstate-layout N4IgpgJg5mDOIC5QAcD2AbAngGQJYDswA6XCdMAYgFkB5AVQGUBRAYWwEkWBpAbQAYAuohSpYuAC65U+YSAAeiAMyKAnEQCMADgCsmvtsV9NAFgBMigOwWANCEyIAtHqJ8AbFb0W9fFZcUBff1s0LDxCIhpCAAVUAnFqemY2Tl5BWTQxSWlZBQQHCz4iFU0TdWLfQ20fW3sEU00LIldzRVNXY3VjNxVtY0DgjBwCYkiwGLiExiZaADUmfiEkEAyJKRkl3PNXDTLTI1azY0V1UxrEMu3jnW0T421XFQLtfuXBsJHo2Px4plgAYwAhsgwAt0qJVtkNo51IUeuoLDcdCpTMjdNozggEUVOu4+IoOiZjCoXiEhuEqAD8Jhxt9YJNmLN5mklissutQLlNOp1C4DOpWqYLCpjCL1BjzMYiNoLO1XM1TFUYQYSW9hkQKVSaeI6bQpsluKCWeC2TklJo1K1jnwynoFYpxa5CtpTDCVNzBa5jhYVaE1RrqV9tRQAEIAv4Aa1gyDDIOZIkya1NCB0LmMmlMac6fAKFg6GIcbSKcvuBlUMKOZh9ZOI-q1dNDEajMZ46kW8Yh7PkiAs5hchnTKmzjy5mnzWk0RBMii5+k6xnccqr73VlIDcTpTG+YAATob2yaoQgRdtHr4PK1NKpTnZEIKpdLTBmM1d588gq9feTV3WKL9AcC91eBNIQ5W8tCaOUjBUVx+W0FRoOMfMnyaeFs3xODlAKVxAnffBUAgOAwU-MAwWAztcgcbkJ2KUpymUfRqhvPJWjULxLFcEwXR6aVsPfUll1IchSI7JMhVTDiLl0KxoLFJiHGgogXT2R9px6ZQyiXP1v0DeAjTIpN7hPIVLDY+oryQicXVcaUbRle40008JRi1YSD1AhB4UUIge1LB54LlaDr1qGFqO5OULDCt0DE0HD-CAA */
     id: "polyLine",
-    initial: "idle",
+
     states: {
-        idle: {},
+        idle: {
+            on: {
+                MOUSECLICK: {
+                    target: "OnePoint",
+                    actions: "createLine"
+                }
+            }
+        },
+
+        ManyPoints: {
+            on: {
+                MOUSEMOVE: {
+                    target: "ManyPoints",
+                    actions: "setLastPoint"
+                },
+
+                MOUSECLICK: {
+                    target: "ManyPoints",
+                    actions: "addPoint",
+                    guard: "pasPlein"
+                },
+
+                Backspace: [{
+                    target: "ManyPoints",
+                    actions: "removeLastPoint",
+                    guard: "plusDeDeuxPoints"
+                }, {
+                    target: "OnePoint",
+                    actions: "removeLastPoint"
+                }],
+
+                Enter: {
+                    target: "idle",
+                    actions: "saveLine"
+                },
+
+                Escape: {
+                    target: "idle",
+                    actions: "abandon"
+                }
+            }
+        },
+        OnePoint: {
+            on: {
+                MOUSECLICK: {
+                    target: "ManyPoints",
+                    guard: "pasPlein",
+                    actions: "addPoint"
+                },
+
+                MOUSEMOVE: {
+                    target: "OnePoint",
+                    actions: "setLastPoint"
+                },
+
+                Escape: {
+                    target: "idle",
+                    actions: "abandon"
+                }
+            }
+        }
     },
+
+    initial: "idle"
 });
 
 // On démarre la machine
